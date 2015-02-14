@@ -1,0 +1,19 @@
+#+TITLE:     Thermomec Open TODO items and diary
+#+AUTHOR:    Iain Bailey
+#+EMAIL:     iainbailey@gmail.com
+#+STARTUP:   indent
+#+STARTUP:   showall
+
+
+* LIST OF TODO ITEMS
+** DONE [#A] Get the circular rupture working
+** TODO [#A] Make a lab book entry of the benzion 1996 runs and conclusions
+** TODO [#A] Make diary entry for the circular rupture results
+** TODO [#B] Reorganise old files
+
+
+* DIARY
+** <2014-07-20 Sun>
+- Got circular rupture compiling
+- Check eqks produced by circular rupture
+- Made sure test_noheat.cpp works with recent change

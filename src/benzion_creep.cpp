@@ -38,7 +38,7 @@ void faultcreep_bz96(
   creepcoeffsBZ96.resize( nL*nD );
 
   /* Calculate the fault depth */
-  double faultDepth = (double)(nD+1)*cellHeight;
+  double faultDepth = (double)(nD)*cellHeight;
 
   /* Loop along strike */
   for( int i=0; i<nL; i++ )

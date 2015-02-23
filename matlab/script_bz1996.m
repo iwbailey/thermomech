@@ -11,9 +11,9 @@
 %  Author: Iain W. Bailey
 %  Created: Sun Feb  18 20:39:13 2015 (-0500)
 %  Version: 1
-%  Last-Updated: Sat Feb 21 16:48:37 2015 (-0500)
+%  Last-Updated: Sun Feb 22 21:02:53 2015 (-0500)
 %            By: Iain W. Bailey
-%      Update #: 227
+%      Update #: 228
 %
 
 %  Change Log:
@@ -96,6 +96,9 @@ strengthCreep = creepstrength( plateVelocity, faultA, faultn, faultE, bkgdT );
 initStress = min( strengthStatic, strengthCreep );
 
 % Initialize the fault
+fault_struct = struct( ...
+    'nL', nx, 'nD', nz, 'cellLength', cellLength, 'cellHeight', cellHeight, ...
+    'faultWidth', faultWidth,
 F = fault_class( nx, nz, cellLength, cellHeight, faultWidth,...
            strengthStatic, strengthDynamic, dosCoef, ...
            faultA, faultn, faultE, stiffnessMatrix, initStress );

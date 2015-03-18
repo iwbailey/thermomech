@@ -14,7 +14,7 @@ for ik=1:nx,
     % along strike indices of stiffness matrix
     idx = [nx-(nx-ik):-1:2,  1:(nx-ik+1)];
     for j=1:nz,
-        stress(j,ik) = sum( flat( -slipdef.*stiffnessmatrix(j,:,idx) ) );
+        stress(j,ik) = sum( flat( -slipdef.*squeeze(stiffnessmatrix(j,:,idx)) ) );
     end
 end
 

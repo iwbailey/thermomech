@@ -11,9 +11,9 @@
 %  Author: Iain W. Bailey
 %  Created: Sun Feb  18 20:39:13 2015 (-0500)
 %  Version: 1
-%  Last-Updated: Sun Feb 22 21:02:53 2015 (-0500)
+%  Last-Updated: Sun Mar  8 17:46:42 2015 (-0400)
 %            By: Iain W. Bailey
-%      Update #: 228
+%      Update #: 297
 %
 
 %  Change Log:
@@ -26,6 +26,7 @@
 Units = struct(...
     'yr', 365.25*24*3600,...
     'day', 24*3600, ...
+    'min', 60, ...
     'GPa', 1e9, ...
     'MPa', 1e6, ...
     'km', 1e3, ...
@@ -33,7 +34,6 @@ Units = struct(...
     'kJ', 1e3 );
 
 %% Parameters used in this program
-
 surfTemp = 273 + 20;
 dTdz = 20 *1/Units.km;
 nx = 128;
@@ -48,11 +48,12 @@ ifile_strengthdrops = fullfile('..','inputs','stressdrops_unif.txt');
 zBD = 7.5*Units.km; % Brittle-ductile length [m], TODO: check
 fs = 0.75; % coefficient of friction
 dosCoef = 1.25; % Dynamic overshoot coefficient
-
-activEnergy = 130*( Units.kJ );
+faultE = 0.0; % No thermal impact, set activation energy to zero
+faultn = 3;
 plateVelocity = 35*( Units.mm/Units.yr );
 nTimeMax = 1e6;
 maxTime = 1e5 * Units.yr;
+minTimeStep = 1 *Units.min;
 maxTimeStep = 1 *Units.day;
 
 %% Initialization
@@ -86,8 +87,6 @@ faultA = faultcreep_bz96( nx, nz, cellLength, cellHeight, ...
                           tau0 + fs*dSigmadz*(faultHeight-zBD) );
 
 % Set up the creep parameters over entire fault including creep mask
-faultE = 0.0;
-faultn = 3;
 
 % Calculate the creep strength at the loading strain rate and bkgd temp
 strengthCreep = creepstrength( plateVelocity, faultA, faultn, faultE, bkgdT );
@@ -95,24 +94,27 @@ strengthCreep = creepstrength( plateVelocity, faultA, faultn, faultE, bkgdT );
 % Set the initial stress
 initStress = min( strengthStatic, strengthCreep );
 
-% Initialize the fault
-fault_struct = struct( ...
-    'nL', nx, 'nD', nz, 'cellLength', cellLength, 'cellHeight', cellHeight, ...
-    'faultWidth', faultWidth,
-F = fault_class( nx, nz, cellLength, cellHeight, faultWidth,...
-           strengthStatic, strengthDynamic, dosCoef, ...
-           faultA, faultn, faultE, stiffnessMatrix, initStress );
+%% Initialize the fault
+% Set up structure for the static properties of the fault
+F0 = struct( ...
+    'nL', nx, 'nD', nz, ...
+    'cellLength', cellLength, 'cellHeight', cellHeight, 'width', faultWidth, ...
+    'strengthStatic', strengthStatic, 'strengthDynamic', strengthDynamic, ...
+    'dynOvershootCoeff', dosCoef, ...
+    'arrhA', faultA, 'stressExpon', faultn, 'activEnergy', faultE, ...
+    'initStress', initStress, 'initTemp', bkgdT );
 
-return
+% Dynamic properties of the fault
+FltDyn = struct( ...
+    'slipDeficit',zeros(nz, nx), ...
+    'stress', F0.initStress + ...
+    slipdeftostress( zeros(nz,nx), stiffnessMatrix, nx, nz ) );
 
 %% Set containers for recording
-
 totalCreepSlip = zeros( nz, nx );
 totalEqkSlip = zeros( nz, nx);
 
 %% Start the algorithm
-% Calculate the stress
-stress = F.stress;
 
 % Print header for the earthquake catalog
 fprintf('Time_yr, x_km, z_km, Mag_P, Mag_W, Area_km2, StressDrop_MPa\n');
@@ -122,43 +124,48 @@ iTimeStep = 0;
 time = 0.0;
 while( iTimeStep < nTimeMax && time < maxTime )
 
-    % Get the creep velocity on the fault */
-    creepVel = F.creepVelocity( stress, bkgdT);
+    % Get the creep velocity on the fault
+    FltDyn.creepVel = F0.width*creeprate( FltDyn.stress, F0.arrhA, F0.stressExpon, ...
+                                          F0.activEnergy, F0.initTemp );
 
-    % Compute the time to failure */
-    timeStep = F.estimateTimeToFailure( stress, creepVel, plateVelocity );
+    % Compute the time to failure
+    timeStep = timetofailure( F0, FltDyn.stress, FltDyn.creepVel, plateVelocity, ...
+                              stiffnessMatrix );
 
-    % Adjust the time step */
+    % Adjust the time step
     if( timeStep < 0 )
         % Negative implies something went wrong
         error('Negative time step at iTimeStep %i, t = %.3f yr\n', ...
               iTimeStep, time / Units.yr );
     elseif( timeStep > maxTimeStep )
-        % Don't let it get too big or creep rates will be inaccurate */
+        % Don't let it get too big or creep rates will be inaccurate
         fprintf('Time %8.2f: Using maximum time step\n', time/Units.yr );
         timeStep = maxTimeStep;
     elseif( timeStep < minTimeStep )
-        % Don't let it get too small or we will be waiting forever */
+        % Don't let it get too small or we will be waiting
         fprintf('Time %8.2f: Using minimum time step\n', time/Units.yr );
         timeStep = minTimeStep;
     else
         fprintf('Time %8.2f\n', time/Units.yr);
     end
 
-    % Load the fault */
-    F.loadFault( plateVelocity, creepVel, timeStep );
+    % Load the fault
+    FltDyn.slipDeficit = FltDyn.slipDeficit + (plateVelocity*timeStep - ...
+                                               FltDyn.creepVel);
 
-    % Add on the creep slip */
-    totalCreepSlip = totalCreepSlip + creepVel*timeStep;
+    % Add on the creep slip
+    totalCreepSlip = totalCreepSlip + FltDyn.creepVel*timeStep;
 
-    % Update the time */
+    % Update the time
     time = time+timeStep;
 
-    % Get the new stress */
-    stress =  F.stress();
+    % Get the new stress
+    FltDyn.stress =  F0.initStress + slipdeftostress( FltDyn.slipDeficit, ...
+                                                      stiffnessMatrix, nx, nz ...
+                                                      );
 
-    % Calculate whether there are any hypocenters */
-    nCrit = F.nCriticalCells( stress );
+    % Calculate whether there are any hypocenters
+    nCrit = nnz( FltDyn.stress >= F0.strengthStatic );
     if( nCrit > 1 )
         fprintf('\nWARNING: Multiple hypocenters (%i)\m', nCrit );
     end
@@ -168,15 +175,15 @@ while( iTimeStep < nTimeMax && time < maxTime )
         fprintf('*EQ* ');
 
         % Compute the slip deficit before the earthquake */
-        slipDeficitPre = F.slipDeficit;
-        stressPre = stress;
+        slipDeficitPre = FltDyn.slipDeficit;
+        stressPre = FltDyn.stress;
         timePre = time;
 
         % Compute the earthquake */
-        eqkSlip = F.computeEarthquake( stress, time, iHypo, jHypo, slipVelocity );
+        eqkSlip = computeEarthquake( stress, time, iHypo, jHypo, slipVelocity );
 
         % Compute the new slip deficit */
-        slipDeficitPost = F.slipDeficit;
+        slipDeficitPost = slipDeficitPre - eqkSlip;
 
         % Compute the earthquake properties */
         thisEQ = Earthquake( iHypo, jHypo, timePre, faultLength*faultWidth/nx/nz, ...

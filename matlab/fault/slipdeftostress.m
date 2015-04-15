@@ -9,18 +9,22 @@ if( nargin < 4 ),
 end
 
 % Loop through all cells
+tic
 stress = zeros(nz,nx);
 for ik=1:nx,
     % along strike indices of stiffness matrix
     idx = [nx-(nx-ik):-1:2,  1:(nx-ik+1)];
+
+    % Loop through receiver depths
     for j=1:nz,
-        stress(j,ik) = sum( flat( -slipdef.*squeeze(stiffnessmatrix(j,:,idx)) ) );
+        
+        % Multiply slip def by stiffness matrix for this receiver cell
+        stressFromCells = -slipdef.*stiffnessmatrix{j}(:,idx);
+        
+        % Sum to get stress
+        stress( j, ik) = sum( stressFromCells(:) );
     end
 end
 
-end
-%-------------------------------------------------------------------------------
-function x = flat(x)
-%FLAT flatten a matrix
-x = x(:);
+
 end

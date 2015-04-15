@@ -1,4 +1,4 @@
-function time = timetofailure( Fault, stress, creepVel, plateVelocity, stiffnessMatrix )
+function time = timetofailure( Fault, stress, creepVel, plateVelocity, stiffk )
 % Estimate time to failure for the entire fault given loading at current rate
 % and stress. Note that this does not account for changes to the creep velocity
 % caused by changes to the stress. Hence, this function should not be used to
@@ -14,7 +14,7 @@ if( min( stressToFailure(:) ) <= 0 ), time = 0.0; return; end
 % rate for this fault, assuming constant loading
 loadingRate = plateVelocity - creepVel;
 
-stressingRate = slipdeftostress( -loadingRate, stiffnessMatrix, Fault.nL, Fault.nD );
+stressingRate = slipdeftostressk( loadingRate, stiffk, Fault.nL, Fault.nD );
 
 % Compute the time taken to reach failure
 failTime = stressToFailure ./ stressingRate;

@@ -22,6 +22,8 @@ creepCoeffs = max( ...
     creep_bz96( sideDist, strainRate, strength_zBD, xBD ), ...
     creep_bz96( bottomDist, strainRate, strength_zBD, zBD) );
 
+% TODO: assign brittle strength to 20% of creep cells
+
 end
 
 % ------------------------------------------------------------------------------

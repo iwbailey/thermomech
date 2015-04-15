@@ -1,4 +1,4 @@
-function stiff = stiffnessmatrix( dx, dz, z0, mu, nl, nd )
+function [stiff, selfstiff] = stiffnessmatrix( dx, dz, z0, mu, nl, nd )
 %STIFFNESSMATRIX Calculate the slip to stress transformation for the fault
 %
 % stiff = stiffnessmatrix( dx, dz, z0, mu, nl, nd )
@@ -10,18 +10,21 @@ function stiff = stiffnessmatrix( dx, dz, z0, mu, nl, nd )
 % nl = number of cells along strike
 % nd = number of cells down
 
-% Depth of cells */
-z = z0 + ( (1:nd)+0.5 )*dz;
+% Depth of cells 
+z = z0 + ( (0:nd-1) )*dz;
 
 % Difference in strike index btw source and receiver
-diffx = (1:nl) * dx;
+diffx = (0:nl-1) * dx;
 
 % Initialize the matrix
-stiff = zeros( nd, nd, nl);
+stiff = cell(1,nd);
+selfstiff = zeros( nd, nl);
 
+% Loop through all receiver depths
 for i=1:nd,
-    stiff(i,:,:) = 2*mu*strikeslipstrain( 0.5*dz, 0.5*dx, z(i), ...
-                                          diffx, z );
+    % Calculate strain contribution 
+    stiff{i} = 2*mu*strikeslipstrain( 0.5*dz, 0.5*dx, z(i), diffx, z );
+    selfstiff(i, :) = stiff{i}(i,1)*ones(1,nl);
 end
 
 

@@ -27,30 +27,27 @@ program faultslip
   real, parameter :: tauratioz = 4
   real, parameter :: tauratiox = 4
   real, parameter :: zDB = 10 ! depth where creep rate at tau = fs*Seff equals Vpl
-  real, parameter :: xDB = 62.5 ! analogous horizontal position of DB transition
+  real, parameter :: xDB = 7.5 ! analogous horizontal position of DB transition
   real, parameter :: t0=125.0
 
   real(kind=8), dimension(nl,nd,nd) :: fi
   real(kind=8), dimension(nl,nd) :: fes, fen
   real(kind=8), dimension(nl,nd) :: u1, u2, tau, taus, taua, tauf, tau0, delu, &
-       x, z, crp, vcrp, sk, du
+       x, z, crp, vcrp, du
   integer, dimension(nl*nd) :: ifail, jfail
 
   integer i, j, l, k, m, ii, jj, ik, it, ihypo, jhypo, nhypo, ihypo1, jhypo1, &
        indf, nEQ
-  integer idum
+!  integer idum
 
   character(200) ofilenameStressDrops, ofilename2, ofilenameStrength, ofilename4, ifilename
-  real(kind=8) rn, ran1
+  real(kind=8) rn !, ran1
 
-  real(kind=8) delmax, xd2, xw2, hcell, hxcell, temp, temp1, temp2, upl, xcrpdb, xhypo
+  real(kind=8) delmax, hcell, hxcell, temp, temp1, temp2, upl, xcrpdb, xhypo
   real(kind=8) xrcrp, porepress, porepressDB, porepressDBx, Seff, SeffDB, SeffDBx, sigmanormal
-  real(kind=8) sigmanormalDB, sigmanormalDBx, tau01, tau02, tauamx, xi, zcrpDB, zDBx
+  real(kind=8) sigmanormalDB, sigmanormalDBx, xi, zcrpDB, zDBx
   real(kind=8) zhypo, zj, zrcrp, t
 
-
-  xd2=Zdepth/(2.*nd) ! cell half-depth
-  xw2=Xlength/(2.*nl) ! cell half-width
 
   ifilename = './iofiles/stressdrops.unif.12pm6.txt'
   ofilenameStressDrops ='./iofiles/stressdrops.unif.dtau12pm6.out'
@@ -62,25 +59,28 @@ program faultslip
   !  here i,k=1,nl and j,l=1,nd.  Shear modulus is 300 kbars.
   !  Function ff(i-k,j,l) is equated to f(ik,j,l) where ik = ile1,nl
   call get_stiffnessi( fi, nl, nd, Xlength, Zdepth )
-  call get_stiffnesse( fes, nl, nd, Xlength, Zdepth, Xlength2, Zdepth, .true., &
-       0.0 )
-  call get_stiffnesse( fen, nl, nd, Xlength, Zdepth, Xlength2, Zdepth, .false., &
-       0.0 )
+  fes = 0.0
+!  call get_stiffnesse( fes, nl, nd, Xlength, Zdepth, Xlength2, Zdepth, .true., &
+!       0.0 )
+  fen = 0.0
+!  call get_stiffnesse( fen, nl, nd, Xlength, Zdepth, Xlength2, Zdepth, .false., &
+!       0.0 )
 
-  ! calculate sum of stiffnesses (effective stiffness for uniform forward
-  ! fault motion) for each cell
-  do j = 1,nd
-     do i = 1,nl
-        sk(i,j) = fes(i,j)+fen(i,j)
-        do l = 1,nd
-           do k = 1,nl
-              ik = abs(i-k)+1
-              sk(i,j) = sk(i,j)+fi(ik,j,l)
-           enddo
-        enddo
-        !       write(*,*)'i,j,sk(i,j)',i,j,sk(i,j)
-     enddo
-  enddo
+ !  ! calculate sum of stiffnesses (effective stiffness for uniform forward
+ !  ! fault motion) for each cell
+ !  do j = 1,nd
+ !     do i = 1,nl
+ ! !       sk(i,j) = fes(i,j)+fen(i,j)
+ !       sk(i,j) = 0.0
+ !        do l = 1,nd
+ !           do k = 1,nl
+ !              ik = abs(i-k)+1
+ !              sk(i,j) = sk(i,j)+fi(ik,j,l)
+ !           enddo
+ !        enddo
+ !        !       write(*,*)'i,j,sk(i,j)',i,j,sk(i,j)
+ !     enddo
+ !  enddo
 
   !  Positions of mid cells (x(i,j) and z(i,j):
   hcell = Zdepth/nd    ! "cell" height
@@ -136,7 +136,8 @@ program faultslip
 
         xcrpDB = Vpl/((fs*SeffDBx)**3)
 
-        xrcrp = 3.0*log(tauratiox)/(Xlength - xDB)
+        !xrcrp = 3.0*log(tauratiox)/(Xlength - xDB)
+        xrcrp = 3.0*log(tauratiox)/xDB
 
         ! A composite 2D distribution of creep properties:
 
@@ -147,7 +148,10 @@ program faultslip
         ! of those.
 
         crp(k,l) = zcrpDB*exp(zrcrp*(z(k,l) - zDB))
-        temp = xcrpDB*exp(xrcrp*(x(k,l) - xDB))
+
+        !temp = xcrpDB*exp(xrcrp*(x(k,l) - xDB))
+        temp = xcrpDB*exp(xrcrp*( max(xDB - x(k,l), x(k,l) - (Xlength-xDB) ) ))
+
         if(temp.gt.crp(k,l))crp(k,l)=temp
 
         !    EFFECTIVE REMOVAL OF CREEP RESPONSE:
@@ -169,14 +173,14 @@ program faultslip
   k=0
   do j=1,nd
      do i=1,nl
-        if(z(i,j).lt.13.75.and.x(i,j).lt.66.25) then
+        if(z(i,j).lt.13.75.and.x(i,j).gt.3.75.and.x(i,j).lt.66.25) then
            !rn = ran1(idum)
            rn = rand()
            k = k+1
            if(rn.le.0.2)then
               l = l + 1
               crp(i,j)=temp2
-              if(z(i,j).lt.zDB.and.x(i,j).lt.xDB)crp(i,j)=temp1
+              if(z(i,j).lt.zDB.and.x(i,j).gt.xDB.and.x(i,j).lt.(Xlength-xDB))crp(i,j)=temp1
            endif
         endif
      enddo
@@ -184,12 +188,10 @@ program faultslip
   write(*,*) l, 'random selections, i.e.,', 100*l/k, '%'
   !	 pause
 
+
   !       pause
 
   ! arrest friction distribution is output of get_uniform_dtau.m
-
-  tauamx=0
-
   open ( 10, file=ifilename, status='old', iostat=k, action='read')
   write(*,*) 'Reading ', ifilename, k
   do i=1,nl
@@ -197,16 +199,11 @@ program faultslip
   enddo
   close(10)
 
-  do j=1,nd
-     do i=1,nl
-!        taua(i,j)=taus(i,j)-dtauavg+pm*(2*taua(i,j)-1)
-        taua(i,j)=taus(i,j)-taua(i,j)
-        if(taua(i,j).gt.tauamx)tauamx=taua(i,j)
-     enddo
-  enddo
-  write(*,*)'tauamx=',tauamx
+  ! Convert from dtau to taua
+  taua = taus - taua
+  write(*,*)'tauamx=',maxval(taua)
 
-  !      write the distribution of cell values
+  ! Write the distribution of cell values
   open(1,file=ofilenameStressDrops) ! strength - arrest stress
   open(3,file=ofilenameStrength) ! strength
   open(4,file=ofilename4) ! creep values
@@ -226,54 +223,34 @@ program faultslip
   write(*,*)'Written to ', ofilename4
   !	pause
 
-  ! initial stress
-  do i=1,nl
-     do j=1,nd
-        tau01 = taus(i,j)-dtaumx/2.              ! bars
-        tau02 = 0.95*(Vpl/crp(i,j))**(1./3.)     ! bars
-        !	 tau03 = tau01*tau02/(tau01 + tau02)
-        tau0(i,j) = min(tau01, tau02)            ! bars
-     enddo
-  enddo
+  ! Initial stress in bars
+  tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
 
-
-  ! lock the fault; initialize fault offset from plate motion u1, u2
-  do j=1,nd
-     do i=1,nl
-        tauf(i,j)=taus(i,j)
-        u1(i,j)=0
-        u2(i,j)=u1(i,j)
-     enddo
-  enddo
-
-  !	open(2,file='./iofiles/tau2.unif',form='unformatted')
-  !	open(3,file='./iofiles/hypo2.unif')
+  ! Lock the fault; initialize fault offset from plate motion u1, u2
+  tauf = taus
+  u1 = 0.0
+  u2 = 0.0
 
   ! impose 125 yr of plate motion
   t = t0
   nEQ = 0
-  upl=t*vpl
+  upl = t*vpl
 
   !	do it=1,25*356/7+1        ! external loop for model evolution
-  do it=1,25*356/4+1        ! external loop for model evolution
+  do it = 1, 25*356/4+1        ! external loop for model evolution
      !	do it=1,25*365/3+1        ! external loop for model evolution
 
-     !	write(*,*)'---------------'
      write(*,*)'model run time index =',it,', time = ',t
-     !	write(*,*)'---------------'
 
-     !   calculate stresses
+     ! Calculate stresses
+     ! stress due to back slip of bounding large exterior cells at
+     ! current cycle
+     tau = tau0 + ( fes + fen )*(-vpl*t)
 
      do j=1,nd      ! obs cell depth index
         do i=1,nl      ! obs cell length index
 
-           ! stress due to back slip of bounding large exterior cells at
-           ! current cycle.
-
-           tau(i,j)=tau0(i,j)+(fes(i,j)+fen(i,j))*(-vpl*t)
-
            ! stress due to interior region
-
            do l=1,nd     ! source cell depth index
               do k=1,nl     ! source cell length index
                  ik=abs(i-k)+1
@@ -284,17 +261,10 @@ program faultslip
         enddo
      enddo
 
+     ! Check for negative stress
+     if( minval(tau).lt.0 ) write(*,*)'negative stress at i,j=',i,j
 
-     do j=1,nd
-        do i=1,nl
-           if(tau(i,j).lt.0)then
-              write(*,*)'negative stress at i,j=',i,j
-              !         pause
-           endif
-        enddo
-     enddo
-
-     ! find location of hypocenter
+     ! Find location of hypocenter
      nhypo=0
      ihypo=0
      jhypo=0
@@ -303,120 +273,117 @@ program faultslip
         do i=1,nl
            if(tau(i,j).ge.taus(i,j))then
               nhypo=nhypo+1
+
+              ! Store location of the place that is most over stressed
               if(tau(i,j)-taus(i,j).gt.delmax)then
                  ihypo=i                   ! i coord of slip initiator
                  jhypo=j                   ! j coord of slip initiator
                  delmax=tau(i,j)-taus(i,j)
-                 !	    write(*,*)'i,j,taus,tau are',i,j,taus(i,j),tau(i,j)
               endif
            endif
         enddo
      enddo
+
+     ! Print message if hypocenter
      if(nhypo.ge.1)then
         write(*,*)'nhypo= ',nhypo
         write(*,*)'ihypo,ihypo1,jhypo,jhypo1= ',ihypo,ihypo1,jhypo,jhypo1
-        nEQ = nEQ+1
 
-     endif
-     if(ihypo.ne.0)then
+        nEQ = nEQ+1
         xhypo=x(ihypo,jhypo)
         zhypo=z(ihypo,jhypo)
-        !	  write(3,*)t,xhypo,zhypo
+
      endif
 
-     ! test for brittle failure
+     ! Compute failure iterations
+     indf = nhypo ! number of current failures
+     do while ( indf.gt.0 )
 
-1     indf=0   ! number of current failures
+        ! Count failures and compute slip in each cell
+        indf=0
+        do j=1,nd
+           do i=1,nl
+              if( tau(i,j)-tauf(i,j).ge.0 )then
+                 delu(i,j)=(taua(i,j)-tau(i,j))/fi(1,j,j) ! brittle self-slip
+                 indf=indf+1
+                 ifail(indf)=i
+                 jfail(indf)=j
 
-     do j=1,nd
-        do i=1,nl
-           if( tau(i,j)-tauf(i,j).ge.0 )then
-              delu(i,j)=(taua(i,j)-tau(i,j))/fi(1,j,j) ! brittle self-slip
-              indf=indf+1
-              ifail(indf)=i
-              jfail(indf)=j
-              ! reduce tauf to dynamic friction
-              tauf(i,j)=taus(i,j)-(taus(i,j)-taua(i,j))/dos
-           endif
-        enddo
-     enddo
-
-
-     ! adjust stresses and brittle displacements; final stresses after
-     ! brittle failure will be distributed between arrest stress and
-     !  dynamic friction
-
-     do m=1,indf
-        i=ifail(m)
-        j=jfail(m)
-        do jj=1,nd
-           do ii=1,nl
-              ik=abs(ii-i)+1
-              tau(ii,jj)=tau(ii,jj)+fi(ik,jj,j)*delu(i,j)
+                 ! reduce tauf to dynamic friction
+                 tauf(i,j)=taus(i,j)-(taus(i,j)-taua(i,j))/dos
+              endif
            enddo
         enddo
-        u2(i,j)=u2(i,j)+delu(i,j)
-        !	  write(*,*)'i,j,slip,tau=',i,j,delu(i,j),tau(i,j)
-     enddo
 
-     if(indf.gt.0) then
-        write(*,*)'indf=',indf
-        goto 1
-     endif
-
-     ! calc vcrp(i,j) for next time step; lock the fault
-
-     do j=1,nd
-        do i=1,nl
-           vcrp(i,j) = crp(i,j)*(tau(i,j)**3)
-           tauf(i,j)=taus(i,j)
+        ! Adjust stresses and brittle displacements; final stresses after
+        ! brittle failure will be distributed between arrest stress and dynamic
+        ! friction
+        do m=1,indf
+           i=ifail(m)
+           j=jfail(m)
+           do jj=1,nd
+              do ii=1,nl
+                 ik=abs(ii-i)+1
+                 tau(ii,jj)=tau(ii,jj)+fi(ik,jj,j)*delu(i,j)
+              enddo
+           enddo
+           u2(i,j)=u2(i,j)+delu(i,j)
         enddo
-     enddo
 
-     !	 do j=1,nd
-     !        write(*,*)'vcrp(128,j)=',vcrp(128,j)
-     !	 enddo
-     !	 pause
+        ! Report the number of failures
+        if(indf.gt.0) then
+           write(*,*)'# failed cells =',indf
+        endif
 
-     ! update fault motion to account for last brittle slip and next
-     ! creep motion; update time and plate motion over next time step;
-     ! check exit criteria
+     end do ! end iterations over failures
 
+     ! Calc vcrp(i,j) for next time step
+     vcrp = crp *(tau**3)
+
+     ! Lock the fault
+     tauf = taus
+
+     ! Update fault motion to account for last brittle slip and next
+     ! creep motion
+     u1 = u2 + vcrp*dt
+
+     ! Check and correct for overshoot
      do j=1,nd
         do i=1,nl
-           u1(i,j)=u2(i,j)+vcrp(i,j)*dt
            if(u1(i,j).gt.upl)then
               write(*,*)'overshoot at i,j=',i,j
               u1(i,j)=upl-1
            endif
-           u2(i,j)=u1(i,j)
         enddo
      enddo
-     t=t+dt
-     upl=t*vpl
 
-  enddo    !  on it
+     ! Update time and plate motion over next time step;
+     u2 = u1
+     t = t+dt
+     upl = t*vpl
 
+  enddo  ! END loop on time steps
+
+  ! Report total number of earthquakes
   write(*,*)nEQ, ' earthquake(s)'
 
-  !	close(3)
+  ! Write the data used to start the next program
   open(2,file=ofilename2,form='unformatted')
   write(2)upl,u1,du    ! data in mm
-  !	write(2)t,tau
   close(2)
   write(*,*)'Written to ', ofilename2
 
-  !	close(2)
-   ! TMP debugging
-    open( 10, file='tmp.out')
-    do i=1,nl
-       do j=1,nd
-          write( 10, *) u1(i,j)
-       end do
-    end do
-    stop
-
   stop
+
+ ! ! TMP debugging
+ !    open( 10, file='tmp.out')
+ !    do i=1,nl
+ !       do j=1,nd
+ !          write( 10, *) tau0(i,j)
+ !       end do
+ !    end do
+ !    stop
+
 end program faultslip
 
 !-------------------------------------------------------------------------------

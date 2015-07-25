@@ -1,5 +1,7 @@
 program faultslip
   use stiffnessmatrix
+  use initialize
+
   implicit none
   !  This program calculates the evolutions of stress and slip on a
   ! cellular fault incorparating both brittle slip due to static/kineti!
@@ -25,7 +27,6 @@ program faultslip
   real, parameter :: dtaumx = 60.0 ! maximum stress drop in bars
   real, parameter :: Vpl = 35.0 ! plate velocity in mm/yr
   real, parameter :: tauratioz = 4
-  real, parameter :: tauratiox = 4
   real, parameter :: zDB = 10 ! depth where creep rate at tau = fs*Seff equals Vpl
   real, parameter :: xDB = 7.5 ! analogous horizontal position of DB transition
   real, parameter :: t0=125.0
@@ -36,24 +37,15 @@ program faultslip
        x, z, crp, vcrp, du
   integer, dimension(nl*nd) :: ifail, jfail
 
-  integer i, j, l, k, m, ii, jj, ik, it, ihypo, jhypo, nhypo, ihypo1, jhypo1, &
+  integer i, j, m, ii, jj, ik, it, ihypo, jhypo, nhypo, ihypo1, jhypo1, &
        indf, nEQ
-!  integer idum
 
-  character(200) ofilenameStressDrops, ofilename2, ofilenameStrength, ofilename4, ifilename
-  real(kind=8) rn !, ran1
+  character(200) ofilename2, ifilename
 
-  real(kind=8) delmax, hcell, hxcell, temp, temp1, temp2, upl, xcrpdb, xhypo
-  real(kind=8) xrcrp, porepress, porepressDB, porepressDBx, Seff, SeffDB, SeffDBx, sigmanormal
-  real(kind=8) sigmanormalDB, sigmanormalDBx, xi, zcrpDB, zDBx
-  real(kind=8) zhypo, zj, zrcrp, t
-
+  real(kind=8) delmax, upl, xhypo, zcrpDB, zhypo, zrcrp, t
 
   ifilename = './iofiles/stressdrops.unif.12pm6.txt'
-  ofilenameStressDrops ='./iofiles/stressdrops.unif.dtau12pm6.out'
   ofilename2 ='./iofiles/lastdb2.unif.t150.dtau12pm6'
-  ofilenameStrength ='./iofiles/strength.unif.dtau12pm6.out'
-  ofilename4 ='./iofiles/creepcoef.unif.dtau12pm6.out'
 
   !  Define ff(i-k,j,l) by tau(i,j)=[Sum over k,l]ff(i-k,j,l)*slip(k,l);
   !  here i,k=1,nl and j,l=1,nd.  Shear modulus is 300 kbars.
@@ -66,162 +58,19 @@ program faultslip
 !  call get_stiffnesse( fen, nl, nd, Xlength, Zdepth, Xlength2, Zdepth, .false., &
 !       0.0 )
 
- !  ! calculate sum of stiffnesses (effective stiffness for uniform forward
- !  ! fault motion) for each cell
- !  do j = 1,nd
- !     do i = 1,nl
- ! !       sk(i,j) = fes(i,j)+fen(i,j)
- !       sk(i,j) = 0.0
- !        do l = 1,nd
- !           do k = 1,nl
- !              ik = abs(i-k)+1
- !              sk(i,j) = sk(i,j)+fi(ik,j,l)
- !           enddo
- !        enddo
- !        !       write(*,*)'i,j,sk(i,j)',i,j,sk(i,j)
- !     enddo
- !  enddo
+  ! Set the static strength
+  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, 180.0)
 
-  !  Positions of mid cells (x(i,j) and z(i,j):
-  hcell = Zdepth/nd    ! "cell" height
-  hxcell = Xlength/nl  ! "cell" length along strike
-  do j = 1,nd
-     zj = j
-     do i = 1,nl
-        xi = i
-        x(i,j) = (xi - 0.5)*hxcell ! x coord
-        z(i,j) = (zj - 0.5)*hcell  ! z coord
-     end do
-  end do
-  zDBx = zDB !z at x=xDB where creep rate at tau=fs*Seff equals Vpl
+  ! Set the creep coefficients
+  crp = faultcrp( nl, nd, Xlength/nl, Zdepth/nd, Vpl, fs, 180.0*zDB, tauratioz, zDB, xDB)
 
-  ! Brittle strength (static friction), and creep properties:
-  do l = 1,nd
-     do k = 1,nl
+  ! Add randomness to the creep coefficientds
+  zcrpDB = Vpl/((fs*180.0*zDB)**3)
+  zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
+  call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
 
-        sigmanormal = 280.*z(k,l)   ! Snormal equated to overburden
-        sigmanormalDB = 280.*zDB
-        sigmanormalDBx = 280.*zDBx
-
-        porepress = 100.*z(k,l)     ! hydrostatic pore pressure
-        porepressDB = 100.*zDB
-        porepressDBx = 100.*zDBx
-
-        Seff = sigmanormal-porepress ! Ambient effective stress
-        SeffDB = sigmanormalDB - porepressDB
-        SeffDBx = sigmanormalDBx - porepressDBx
-
-        taus(k,l)=dtaumx+fs*Seff          ! static brittle strength
-
-        !	  write(*,*)taus(k,l)
-
-        !  Creep parameters: depth and poition along strike zDB and xDB of
-        ! "ductile-brittle" transitions, SeffDB, and SeffDBx given above.
-        ! We assume Vcreep = crp(x,z)*tau(x,z)**3, where the spatial creep
-        ! property distribution crp(x,z) is given either by
-        ! crp(x,z) = xcrpDB*exp(xrcrp*(x-xzDB)) + zcrpDB*exp(zrcrp*(z-zDB))
-        ! or by the maximum of two analogous 1D functions. xrcrp and zrcrp
-        ! are chosen to enforce given stress ratios (say, 10.0) between that
-        ! at zDB and that at Zdepth (or xDB and Xlength) if the same Vcreep
-        ! is to be produced at both depth (or horizontal locations).
-        ! choices of Zdepth and Xlength correspond to depth and along-strike
-        ! positions where slip along the SAF is mostly in the form of creep.
-        !
-
-        zcrpDB = Vpl/((fs*SeffDB)**3) ! Makes Vcreep = Vpl at zDB
-        !                                      if tau = fs*Seff at depth zDB.
-        zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)      !  see above
-
-        ! analogous parameters for x-dependence:
-
-        xcrpDB = Vpl/((fs*SeffDBx)**3)
-
-        !xrcrp = 3.0*log(tauratiox)/(Xlength - xDB)
-        xrcrp = 3.0*log(tauratiox)/xDB
-
-        ! A composite 2D distribution of creep properties:
-
-        !         crp(k,l) = zcrpDB*exp(zrcrp*(z(k,l) - zDB))
-        !    >             + xcrpDB*exp(xrcrp*(x(k,l) - xDB))
-
-        ! Two 1D distributions of creep properties; crp(k,l) is set as max
-        ! of those.
-
-        crp(k,l) = zcrpDB*exp(zrcrp*(z(k,l) - zDB))
-
-        !temp = xcrpDB*exp(xrcrp*(x(k,l) - xDB))
-        temp = xcrpDB*exp(xrcrp*( max(xDB - x(k,l), x(k,l) - (Xlength-xDB) ) ))
-
-        if(temp.gt.crp(k,l))crp(k,l)=temp
-
-        !    EFFECTIVE REMOVAL OF CREEP RESPONSE:
-        !         crp(k,l) = 1.0E-08*crp(k,l)
-
-     end do
-  end do
-
-  ! assign to 20% randomly chosen 'brittle' cells higher crp(i,j)
-
-  temp1=zcrpDB*exp(zrcrp*(11.25-zDB))
-  temp2=zcrpDB*exp(zrcrp*(8.75-zDB))
-  !	 temp1=zcrpDB
-  !	 temp2=zcrpDB
-
- ! idum=-1
-  call srand(12345)
-  l = 0
-  k=0
-  do j=1,nd
-     do i=1,nl
-        if(z(i,j).lt.13.75.and.x(i,j).gt.3.75.and.x(i,j).lt.66.25) then
-           !rn = ran1(idum)
-           rn = rand()
-           k = k+1
-           if(rn.le.0.2)then
-              l = l + 1
-              crp(i,j)=temp2
-              if(z(i,j).lt.zDB.and.x(i,j).gt.xDB.and.x(i,j).lt.(Xlength-xDB))crp(i,j)=temp1
-           endif
-        endif
-     enddo
-  enddo
-  write(*,*) l, 'random selections, i.e.,', 100*l/k, '%'
-  !	 pause
-
-
-  !       pause
-
-  ! arrest friction distribution is output of get_uniform_dtau.m
-  open ( 10, file=ifilename, status='old', iostat=k, action='read')
-  write(*,*) 'Reading ', ifilename, k
-  do i=1,nl
-     read(10,*)(taua(i,j),j=1,nd) ! this is actually dtau, but changed below
-  enddo
-  close(10)
-
-  ! Convert from dtau to taua
-  taua = taus - taua
-  write(*,*)'tauamx=',maxval(taua)
-
-  ! Write the distribution of cell values
-  open(1,file=ofilenameStressDrops) ! strength - arrest stress
-  open(3,file=ofilenameStrength) ! strength
-  open(4,file=ofilename4) ! creep values
-
-  do i=1,nl
-     do j=1,nd
-        write(1,*)taus(i,j)-taua(i,j)
-        write(3,*)taus(i,j)
-        write(4,*)crp(i,j)
-     enddo
-  enddo
-  close(1)
-  write(*,*)'Written to ', ofilenameStressDrops
-  close(3)
-  write(*,*)'Written to ', ofilenameStrength
-  close(4)
-  write(*,*)'Written to ', ofilename4
-  !	pause
+  ! Set the arrest stress based on the input file of static stress drops
+  taua = faulttaua( ifilename, nl, nd, taus )
 
   ! Initial stress in bars
   tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
@@ -242,24 +91,12 @@ program faultslip
 
      write(*,*)'model run time index =',it,', time = ',t
 
-     ! Calculate stresses
-     ! stress due to back slip of bounding large exterior cells at
-     ! current cycle
-     tau = tau0 + ( fes + fen )*(-vpl*t)
+     ! Calculate stresses from internal slip deficit
+     call slipdef2stress( tau, tau0, u1-upl, fi, nl, nd )
 
-     do j=1,nd      ! obs cell depth index
-        do i=1,nl      ! obs cell length index
-
-           ! stress due to interior region
-           do l=1,nd     ! source cell depth index
-              do k=1,nl     ! source cell length index
-                 ik=abs(i-k)+1
-                 tau(i,j)=tau(i,j)+fi(ik,j,l)*(u1(k,l)-upl)
-              enddo
-           enddo
-
-        enddo
-     enddo
+     ! Add stress due to back slip of bounding large exterior cells at current
+     ! cycle
+     tau = tau + ( fes + fen )*(-vpl*t)
 
      ! Check for negative stress
      if( minval(tau).lt.0 ) write(*,*)'negative stress at i,j=',i,j
@@ -375,14 +212,15 @@ program faultslip
 
   stop
 
- ! ! TMP debugging
- !    open( 10, file='tmp.out')
- !    do i=1,nl
- !       do j=1,nd
- !          write( 10, *) tau0(i,j)
- !       end do
- !    end do
- !    stop
+! ! TMP debugging
+!     open( 10, file='tmp.out')
+!     do i=1,nl
+!        do j=1,nd
+!           write( 10, *) taus(i,j) - taua(i,j)
+!        end do
+!     end do
+!     stop
+
 
 end program faultslip
 

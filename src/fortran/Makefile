@@ -1,17 +1,46 @@
 F90 = gfortran
-SDIR = ./
-BDIR = ./
 OPT = -std=f95 -fall-intrinsics -O3 -pedantic -Wall
 
-SUB = $(SDIR)stiffnessmatrix.f90 $(SDIR)initialize.f90 $(SDIR)add_randomness.f90 $(SDIR)slipdef2stress.f90
+# Modules
+MOD = stiffnessmatrix.o fault_parameters.o
 
-all: slipinitdb2 slipdb2
+# Subroutines
+SUB = initialize.o \
+	add_randomness.o \
+	slipdef2stress.o \
+	find_hypocenters.o \
+	calc_failures.o
 
-slipinitdb2: $(SDIR)slipinitdb2.f90 $(SUB)
-	$(F90) $< $(SUB) -o $@ $(OPT)
+# List of executables to be built within the package
+PROGRAMS = slipinitdb2 slipdb2
 
-slipdb2: $(SDIR)slipdb2.f90 $(SUB2)
-	$(F90) $< $(SUB) -o $@ $(OPT)
+# "make" builds all
+all: $(PROGRAMS)
+
+slipinitdb2: $(MOD) $(SUB)
+
+slipdb2: $(MOD) $(SUB)
+
+# General rule for building prog from prog.o; $^ (GNU extension) is
+# used in order to list additional object files on which the
+# executable depends
+%: %.o
+	$(F90) $(OPT) -o $@ $^ $(LDFLAGS)
+
+# General rules for building prog.o from prog.f90 or prog.F90; $< is
+# used in order to list only the first prerequisite (the source file)
+# and not the additional prerequisites such as module or include files
+%.o: %.f90
+	$(F90) $(OPT) -c $<
+
+%.o: %.F90
+	$(F90) $(OPT) -c $<
+
+# Utility targets
+.PHONY: clean veryclean
 
 clean:
-	rm slipdb2 slipinitdb2
+	rm -f *.o *.mod
+
+clear: clean
+	rm -f $(PROGRAMS)

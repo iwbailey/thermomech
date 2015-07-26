@@ -27,18 +27,20 @@ while(isOk)
         ihypo(end+1) = fread( fid, 1, 'integer*4');
         jhypo(end+1) = fread( fid, 1, 'integer*4');
         thypo(end+1) = fread( fid, 1, 'real*8');
-        nSlip(end+1) = fread( fid, 1, 'integer*4');
-        avgSlip(end+1) = fread( fid, 1, 'real*8');
 
+        iduf{end+1} = reshape( fread( fid, nl*nd, 'integer*4'), nl, nd)';
+        duc{end+1} = reshape( fread( fid, nl*nd, 'real*8'), nl, nd)';
+        dtau{end+1} = reshape( fread( fid, nl*nd, 'real*8'), nl, nd)';
+
+        p0(end+1) = (1e3*dx)^2 * 1e4*sum(iduf{end}(:));
     catch ME
-        fprintf('...%i eqks\n',numel(nhypo) );
+        fprintf('...%i eqks\n',numel(p0) );
         isOk = false;
         break
     end
 end
 fclose(fid);
 
-p0 = nSlip*(1e3*dx)^2 .* (1e3*avgSlip);
 m0 = 30e9*p0;
 mag = (log10(m0) - 16.1)./1.5;
 

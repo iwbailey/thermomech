@@ -59,7 +59,8 @@ module initialize
       implicit none
       ! Input arguments
       integer, intent(in):: nl, nd
-      real, intent(in) :: dx, dz, Vpl, fs, SeffDB, tauratio, xDB, zDB
+      real, intent(in) :: dx, dz, Vpl, fs, tauratio, xDB, zDB
+      real(kind=8), intent(in) :: SeffDB
 
       ! Output
       real(kind=8), dimension(nl, nd) :: faultcrp

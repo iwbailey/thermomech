@@ -38,9 +38,9 @@ while(isOk)
 end
 fclose(fid);
 
-p0 = nSlip*(1e3*dx)^2 .* (1e3*avgSlip);
-m0 = 30e9*p0;
-mag = (log10(m0) - 16.1)./1.5;
+p0 = nSlip*(1e3*dx)^2 .* (1e-3*avgSlip); % in m^3
+m0 = 30e9*p0; % in Nm
+mag = (log10(m0) - 9.1)./1.5;
 
 %% Plot hypocenters
 figure

@@ -2,7 +2,7 @@ subroutine add_randomness( crp, nl, nd, dx, dz, xDB, zDB, zcrpDB, zrcrp )
   implicit none
 
   integer, intent(in) :: nl, nd
-  real, intent(in) :: dx, dz, xDB, zDB
+  real(kind=8), intent(in) :: dx, dz, xDB, zDB
   real(kind=8), intent(in) :: zcrpDB, zrcrp
   real(kind=8), dimension(nl, nd) :: crp
 

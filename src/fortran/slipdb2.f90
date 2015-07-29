@@ -14,28 +14,9 @@ program faultslip
 
   implicit none
 
-  ! !  UNITS: fault dimensions in km, time in year, velocities in mm/yr
-  ! real, parameter :: Xlength = 70.0 ! length in km along strike, north of GH
-  ! real, parameter :: Zdepth = 17.5  ! overall depth of fault region in km
-  ! real, parameter :: Xlength2 = 700.0 ! length  of extenal slip sections in km
-  ! integer, parameter :: nl = 128 ! number of cells along strike
-  ! integer, parameter :: nd = 32 ! number of cells over depth
-  ! real, parameter :: fs = 0.75 ! static coefficient of friction
-  ! real, parameter :: dos = 1.25 ! dynamic overshoot coeff
-  real, parameter :: dtmx = 3.0/356.0 ! max time increment (yr)
-  ! real, parameter :: dtauavg = 12.0 ! average taus-taua
-  ! real, parameter :: pm = 6 ! plus-minus variation in values of taus-taua
-  ! real, parameter :: dtaumx = 60.0 ! maximum stress drop in bars
-  ! real, parameter :: Vpl = 35.0 ! plate velocity in mm/yr
-  ! real, parameter :: tauratioz = 4
-  ! real, parameter :: tauratiox = 4
-  ! real, parameter :: zDB = 10 ! depth where creep rate at tau = fs*Seff equals Vpl
-  ! real, parameter :: xDB = 7.5 ! analogous horizontal position of DB transition
-  ! real, parameter :: t0=125.0
-  ! real, parameter :: p=0.25 ! average stress drop is this proportion of dtaumx
-  ! real, parameter :: s=0.1875 ! range of arrest stresses is 2*this proportion of dtaumx
-  real, parameter :: tSouth = 400 ! originally 150
-   real, parameter :: tNorth = 400 ! originally 200
+  real(kind=8), parameter :: dtmx = 3.0/356.0 ! max time increment (yr)
+  real(kind=8), parameter :: tSouth = 400 ! originally 150
+  real(kind=8), parameter :: tNorth = 400 ! originally 200
 
   real(kind=8), dimension(nl,nd,nd) :: fi
   real(kind=8), dimension(nl,nd) :: fes, fen
@@ -48,10 +29,6 @@ program faultslip
   real(kind=8) dt, t1
 
   real(kind=8) upl, taumx, taumn, zrcrp, t, avgSlip, avgStressDrop, SeffDB, zcrpDB
-  real xd2, xw2,  xhypo, zhypo
-
-  xd2=Zdepth/(2.*nd)     ! cell half-depth
-  xw2=Xlength/(2.*nl)    ! cell half-width
 
   write(*,*) 'cohesion =',dtaumx
 
@@ -61,7 +38,6 @@ program faultslip
 
   !	write(*,*) 'dtmx=',dtmx
   dt=dtmx              ! initial time step
-
 
   !  Define ff(i-k,j,l) by tau(i,j)=[Sum over k,l]ff(i-k,j,l)*slip(k,l);
   !  here i,k=1,nl and j,l=1,nd.  Shear modulus is 300 kbars.
@@ -75,18 +51,16 @@ program faultslip
   fen = 0.0
 
   ! Set the static strength
-  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, 180.0)
+  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, dSigmaEff_dz)
 
   ! Set the creep coefficients
-  SeffDB = 180.0*zDB
+  SeffDB = dSigmaEff_dz*zDB
   crp = faultcrp( nl, nd, Xlength/nl, Zdepth/nd, Vpl, fs, SeffDB, tauratioz, zDB, xDB)
-
 
   ! Add randomness to the creep coefficientds
   zcrpDB = Vpl/((fs*SeffDB)**3)
   zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
   call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
-
 
   ! Set the arrest stress based on the input file of static stress drops
   taua = faulttaua( ifile_stressdrops, nl, nd, taus )
@@ -163,8 +137,6 @@ program faultslip
      call find_hypocenters( nhypo, ihypo, jhypo, tau, taus, nl, nd )
 
      if(nhypo.ne.0)then
-        xhypo = (ihypo-0.5)*(Xlength/nl)
-        zhypo = (jhypo-0.5)*(Zdepth/nd)
 
         !--------------------------------------------------
         !record the stress before we transfer/propagate the rupture
@@ -179,7 +151,7 @@ program faultslip
         avgStressDrop = sum( taustart - tau ) / nSlip
 
         write(*,'(F8.4,1X, F6.2,1X, F6.2,1X, I4,1X, F12.4,1X, F12.4)') &
-             t, xhypo, zhypo, nSlip, avgStressDrop, avgSlip
+             t, (ihypo-0.5)*(Xlength/nl), (jhypo-0.5)*(Zdepth/nd), nSlip, avgStressDrop, avgSlip
 
 
         ! !--------------------------------------------------

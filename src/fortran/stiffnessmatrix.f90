@@ -1,6 +1,6 @@
 module stiffnessmatrix
   ! ====================== Specification part ===============
-  real, parameter :: xmu = 0.3 ! shear modulus in Mbars
+  real(kind=8), parameter :: xmu = 0.3 ! shear modulus in Mbars
   real(kind=8), parameter :: PI = 3.141592653589793239
 
 contains
@@ -24,12 +24,12 @@ contains
 
     ! Sub-routine arguments
     integer, intent(in) :: nl, nd ! dimension of fault
-    real, intent(in) :: Xlength, Zdepth ! Length and width of fault in km
+    real(kind=8), intent(in) :: Xlength, Zdepth ! Length and width of fault in km
     real(kind=8), intent(out), dimension(nl,nd,nd) :: f ! output matrix
 
     ! Variables used in the function
     integer i, j, l
-    real xd2, xw2, x3, y1, y3, ri, rj, rl
+    real(kind=8) xd2, xw2, x3, y1, y3, ri, rj, rl
     real(kind=8) e12
 
     ! Cell half width and depth
@@ -42,7 +42,6 @@ contains
     ! i,k=1,Nlength and j,l=1,Ndepth.
     !
     ! Function ff(i-k,j,l) is equated to f(ik,j,l) where ik = 1,Nlength
-
 
     ! Loop through depth index for slip source cell
     do l = 1,nd
@@ -98,14 +97,14 @@ contains
 
     ! Sub-routine arguments
     integer, intent(in) :: nl, nd ! dimension of fault
-    real, intent(in) :: Xlength, Zdepth, Xlength2, Zdepth2 ! Length and width of fault in km
+    real(kind=8), intent(in) :: Xlength, Zdepth, Xlength2, Zdepth2 ! Length and width of fault in km
     logical, intent(in) :: isSouth ! Flag for whether the external fault is South
-    real, intent(in) :: sepdist ! distance between end of this fault and external fault
+    real(kind=8), intent(in) :: sepdist ! distance between end of this fault and external fault
     real(kind=8), intent(out), dimension(nl,nd) :: f ! output matrix
 
     ! Internal variables
     integer i, j
-    real xd2, xw2, yd2, yw2, y1, y3, ri, rj, signNS, dx
+    real(kind=8) xd2, xw2, yd2, yw2, y1, y3, ri, rj, signNS, dx
     real(kind=8) e12
 
     ! Check the separation distance is correct
@@ -190,11 +189,11 @@ contains
 
     ! Function arguments
     ! xw2,xd2 are half width, half height
-    real, intent(in) :: xw2, xd2, x3, y1, y3
+    real(kind=8), intent(in) :: xw2, xd2, x3, y1, y3
 
     ! Function variables
     real(kind=8) e12
-    real, dimension(4) :: sgn, fx1, fx3
+    real(kind=8), dimension(4) :: sgn, fx1, fx3
     integer i
     real(kind=8) t, q, p, tt, qq, pp, s1, s2, s1q, s2p, f1, f2, f4, etmp
 

@@ -19,7 +19,7 @@ module initialize
 
       ! Input arguments
       integer, intent(in):: nl, nd
-      real, intent(in) :: dz, tauc, fs, dsigma_dz
+      real(kind=8), intent(in) :: dz, tauc, fs, dsigma_dz
 
       ! Output
       real(kind=8), dimension(nl, nd) :: faulttaus
@@ -59,7 +59,7 @@ module initialize
       implicit none
       ! Input arguments
       integer, intent(in):: nl, nd
-      real, intent(in) :: dx, dz, Vpl, fs, tauratio, xDB, zDB
+      real(kind=8), intent(in) :: dx, dz, Vpl, fs, tauratio, xDB, zDB
       real(kind=8), intent(in) :: SeffDB
 
       ! Output
@@ -67,7 +67,7 @@ module initialize
 
       ! Variables used in the function
       integer i, j
-      real faultLength, faultDepth
+      real(kind=8) faultLength, faultDepth
       real(kind=8) zcrpDB, zrcrp, xrcrp
       integer, dimension(nd) :: iDepth
       integer, dimension(nl) :: iStrike

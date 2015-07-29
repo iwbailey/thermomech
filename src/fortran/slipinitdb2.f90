@@ -13,7 +13,7 @@ program faultslip
   ! in that here some (e.g. 20%) randomly chosen cells are giver creep
   ! propoerties of depth z = (or >) zDB.
   !
-  real, parameter :: dt = 4.0/356.0 ! time increment (yr)
+  real(kind=8), parameter :: dt = 4.0/356.0 ! time increment (yr)
 
   real(kind=8), dimension(nl,nd,nd) :: fi
   real(kind=8), dimension(nl,nd) :: fes, fen
@@ -41,10 +41,10 @@ program faultslip
 !       0.0 )
 
   ! Set the static strength
-  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, 180.0)
+  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, dSigmaEff_dz)
 
   ! Set the creep coefficients
-  SeffDB = 180.0*zDB
+  SeffDB = dSigmaEff_dz*zDB
   crp = faultcrp( nl, nd, Xlength/nl, Zdepth/nd, Vpl, fs, SeffDB, tauratioz, zDB, xDB)
 
   ! Add randomness to the creep coefficientds
@@ -52,6 +52,7 @@ program faultslip
   zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
   call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
 
+  write(*,*)'...'
   ! Set the arrest stress based on the input file of static stress drops
   taua = faulttaua( ifilename, nl, nd, taus )
 
@@ -60,7 +61,6 @@ program faultslip
 
   ! Initial stress in bars
   tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
-
 
   ! Lock the fault; initialize fault offset from plate motion u1, u2
   tauf = taus
@@ -89,7 +89,6 @@ program faultslip
      ! Find location of hypocenter
      call find_hypocenters( nhypo, ihypo, jhypo, tau, taus, nl, nd )
 
-
      ! Print if found
      if(nhypo.ge.1)then
         write(*,*)'nhypo= ',nhypo
@@ -99,8 +98,6 @@ program faultslip
       ! Compute failure iterations
         call calc_failures( tau, u2, nl, nd, fi, taus, taud, taua )
      end if
-
-
 
      ! Calc vcrp(i,j) for next time step
      vcrp = crp *(tau**3)
@@ -139,17 +136,14 @@ program faultslip
 
   stop
 
-
-     ! TMP debugging
-     open( 10, file='tmp2.out')
-     do i=1,nl
-        do j=1,nd
-           write( 10, *) tau(i,j)
-        end do
-     end do
-    stop
-
-
+    !  ! TMP debugging
+    !  open( 10, file='tmp2.out')
+    !  do i=1,nl
+    !     do j=1,nd
+    !        write( 10, *) tau(i,j)
+    !     end do
+    !  end do
+    ! stop
 
 end program faultslip
 

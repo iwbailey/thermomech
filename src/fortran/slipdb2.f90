@@ -21,7 +21,7 @@ program faultslip
   real(kind=8), dimension(nl,nd,nd) :: fi
   real(kind=8), dimension(nl,nd) :: fes, fen
   real(kind=8), dimension(nl,nd) :: u1, u2, tau, taus, taud, taua, tauf, tau0, &
-       crp, vcrp, duc, taustart, dtau
+       crp, vcrp, duc, taustart, dtau, activEnergy, temperature
 
   integer i, j, it, ihypo, jhypo, nhypo, nhypo1, nSlip
 
@@ -61,6 +61,10 @@ program faultslip
   zcrpDB = Vpl/((fs*SeffDB)**3)
   zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
   call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
+
+  ! Set the activation energy
+  activEnergy = 0.0
+  temperature = faulttemperature( nl, nd, (Zdepth/nd), Tsurface, dTdz )
 
   ! Set the arrest stress based on the input file of static stress drops
   taua = faulttaua( ifile_stressdrops, nl, nd, taus )
@@ -137,7 +141,10 @@ program faultslip
      call find_hypocenters( nhypo, ihypo, jhypo, tau, taus, nl, nd )
 
      if(nhypo.ne.0)then
-
+        if(nhypo.gt.1.and.it.gt.1) then
+           write(*,*)'Why so many hypocenters?', t, nhypo
+           stop -1
+        end if
         !--------------------------------------------------
         !record the stress before we transfer/propagate the rupture
         taustart = tau
@@ -175,7 +182,7 @@ program faultslip
      endif ! Continue from here if there are no failure points
 
      ! Calc vcrp(i,j) for next time step from current stresses
-     vcrp = crp*(  tau**3 )
+     vcrp = crp*(tau**3)*exp( activEnergy / (Rg*temperature) )
 
      ! Calculate the time step
      dt = dtmx
@@ -239,6 +246,8 @@ program faultslip
 
            ! Return to creep part
            goto 3
+        else
+           write(*,*)'nhypo1 = ', nhypo1
         endif
 
 !4    continue

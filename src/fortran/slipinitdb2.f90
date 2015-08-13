@@ -15,10 +15,13 @@ program faultslip
   !
   real(kind=8), parameter :: dt = 4.0/356.0 ! time increment (yr)
 
+  ! Initial time
+  real(kind=8), parameter :: t0 = 125.0
+
   real(kind=8), dimension(nl,nd,nd) :: fi
   real(kind=8), dimension(nl,nd) :: fes, fen
   real(kind=8), dimension(nl,nd) :: u1, u2, tau, taus, taua, taud, tauf, tau0, &
-       crp, vcrp, duc
+       crp, activEnergy, temperature, vcrp, duc
 
   integer i, j, it, ihypo, jhypo, nhypo, nEQ
 
@@ -52,7 +55,10 @@ program faultslip
   zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
   call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
 
-  write(*,*)'...'
+  ! Set the activation energy
+  activEnergy = 0.0
+  temperature = faulttemperature( nl, nd, (Zdepth/nd), Tsurface, dTdz )
+
   ! Set the arrest stress based on the input file of static stress drops
   taua = faulttaua( ifilename, nl, nd, taus )
 
@@ -100,7 +106,7 @@ program faultslip
      end if
 
      ! Calc vcrp(i,j) for next time step
-     vcrp = crp *(tau**3)
+     vcrp = crp*(tau**3)*exp( activEnergy / (Rg*temperature) )
 
      ! Update fault motion to account for last brittle slip and next
      ! creep motion

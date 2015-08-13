@@ -126,5 +126,32 @@ module initialize
       write(*,*)'tauamx=',maxval(faulttaua)
 
     end function faulttaua
+    !---------------------------------------------------------------------------
+    function faulttemperature( nl, nd, dz, Tsurface, dTdz )
+      implicit none
+      ! Input arguments
+      integer, intent(in):: nl, nd
+      real(kind=8), intent(in) :: dz, Tsurface, dTdz
 
+      ! Output
+      real(kind=8), dimension(nl, nd) :: faulttemperature
+
+      ! Variables in the function
+      integer i
+      integer, dimension(nd) :: iDepth
+      real(kind=8), dimension(nd) :: tempProfile, zcell
+
+      ! Calculate depths at the center of each cell
+      iDepth = (/ (i, i = 1,nd) /)
+      zcell = (iDepth-0.5)*dz
+
+      ! Get temperature at the center of each cell
+      tempProfile = Tsurface + dTdz*zcell
+
+      ! Extend along strike
+      do i = 1,nl
+         faulttemperature(i,:) = tempProfile
+      end do
+
+    end function faulttemperature
   end module initialize

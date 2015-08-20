@@ -50,7 +50,7 @@ subroutine add_randomness( crp, nl, nd, dx, dz, xDB, zDB, zcrpDB, zrcrp )
 
   ! Loop through depths up to 13.5 km
   do j=1,nd
-     if( zcell(j).lt.13.5) then
+     if( zcell(j).lt.13.75) then
 
         ! Loop through strike between 3.75 and 66.25
         do i=1,nl

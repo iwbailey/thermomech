@@ -1,6 +1,50 @@
 module initialize
   contains
     !---------------------------------------------------------------------------
+    function read_faultvalues( ifilename, nl, nd)
+      ! Read a text file containing double precision float values for each slip
+      ! cell of the fault in depth order, arrange into the 2-d array used in
+      ! this program
+      !
+      ! ifilename = char(200) name of input file
+      ! nl = number along strike cells
+      ! nd = number of down dip cells
+
+      implicit none
+
+      ! Input arguments
+      integer, intent(in):: nl, nd
+
+      ! Output
+      real(kind=8), dimension(nl, nd) :: read_faultvalues
+
+      integer i, j, k
+      character(200) ifilename
+
+      ! Open the file
+      open ( 10, file=ifilename, status='old', iostat=k, action='read')
+
+      ! Check if the file was opened successfully
+      if( k.eq.0 ) then
+         write(*,*) 'Reading ', ifilename
+
+         ! Read each column sequentially and assign to output array
+         do i=1,nl
+            read(10,*)(read_faultvalues(i,j),j=1,nd)
+         enddo
+
+         ! Close the file
+         close(10)
+      else
+         ! Problem opening the file
+         write(*,*)'Error opening file ',ifilename
+         close(10)
+         stop -1
+      end if
+
+    end function read_faultvalues
+
+    !---------------------------------------------------------------------------
     function faulttaus( nl, nd, dz, tauc, fs, dsigma_dz)
       ! Set up the fault array of static strength
       !
@@ -100,32 +144,7 @@ module initialize
       end do
 
     end function faultcrp
-    !---------------------------------------------------------------------------
-    function faulttaua( ifilename, nl, nd, taus)
-      implicit none
-      ! Input arguments
-      integer, intent(in):: nl, nd
-      real(kind=8), intent(in), dimension(nl,nd) :: taus
 
-      ! Output
-      real(kind=8), dimension(nl, nd) :: faulttaua
-
-      integer i, j, k
-      character(200) ifilename
-
-      ! arrest friction distribution is output of get_uniform_dtau.m
-      open ( 10, file=ifilename, status='old', iostat=k, action='read')
-      write(*,*) 'Reading ', ifilename
-      do i=1,nl
-         read(10,*)(faulttaua(i,j),j=1,nd) ! this is actually dtau, but changed below
-      enddo
-      close(10)
-
-      ! Convert from dtau to taua
-      faulttaua = taus - faulttaua
-      write(*,*)'tauamx=',maxval(faulttaua)
-
-    end function faulttaua
     !---------------------------------------------------------------------------
     function faulttemperature( nl, nd, dz, Tsurface, dTdz )
       implicit none

@@ -25,19 +25,20 @@ program faultslip
 
   integer i, j, it, ihypo, jhypo, nhypo, nhypo1, nSlip
 
-  character(200) ifilename, ofilename, ifile_stressdrops
+  character(200) ifilename, ofilename, ifile_dtau, ifile_crp
   real(kind=8) dt, t1
 
-  real(kind=8) upl, taumx, taumn, zrcrp, t, avgSlip, avgStressDrop, SeffDB, zcrpDB
+  real(kind=8) upl, taumx, taumn, t, avgSlip, avgStressDrop
 
   write(*,*) 'cohesion =',dtaumx
 
   ifilename='./iofiles/lastdb2.unif.t150.dtau12pm6'
   ofilename='./iofiles/slipdb2_test.unif.dtau12pm6'
-  ifile_stressdrops  = './iofiles/stressdrops.unif.12pm6.txt'
+  ifile_dtau  = './ifiles/stressdrops.unif.12pm6.in'
+  ifile_crp = './ifiles/creepcoef.bz1996.in'
 
   !	write(*,*) 'dtmx=',dtmx
-  dt=dtmx              ! initial time step
+  dt = dtmx              ! initial time step
 
   !  Define ff(i-k,j,l) by tau(i,j)=[Sum over k,l]ff(i-k,j,l)*slip(k,l);
   !  here i,k=1,nl and j,l=1,nd.  Shear modulus is 300 kbars.
@@ -50,24 +51,19 @@ program faultslip
   !       0.0 )
   fen = 0.0
 
-  ! Set the static strength
-  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, dSigmaEff_dz)
-
   ! Set the creep coefficients
-  SeffDB = dSigmaEff_dz*zDB
-  crp = faultcrp( nl, nd, Xlength/nl, Zdepth/nd, Vpl, fs, SeffDB, tauratioz, zDB, xDB)
-
-  ! Add randomness to the creep coefficientds
-  zcrpDB = Vpl/((fs*SeffDB)**3)
-  zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
-  call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
+  crp = read_faultvalues( ifile_crp, nl, nd )
 
   ! Set the activation energy
   activEnergy = 0.0
   temperature = faulttemperature( nl, nd, (Zdepth/nd), Tsurface, dTdz )
 
+  ! Set the static strength
+  taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, dSigmaEff_dz)
+
   ! Set the arrest stress based on the input file of static stress drops
-  taua = faulttaua( ifile_stressdrops, nl, nd, taus )
+  taua = read_faultvalues( ifile_dtau, nl, nd )
+  taua = taus - taua
 
   ! Set the dynamic stress
   taud = taus - ( taus - taua )/dos

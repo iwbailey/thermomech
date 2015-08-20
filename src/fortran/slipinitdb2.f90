@@ -25,11 +25,12 @@ program faultslip
 
   integer i, j, it, ihypo, jhypo, nhypo, nEQ
 
-  character(200) ofilename2, ifilename
+  character(200) ofilename2, ifilename_dtau, ifilename_crp
 
-  real(kind=8) upl, zcrpDB, zrcrp, t, SeffDB
+  real(kind=8) upl, t
 
-  ifilename = './iofiles/stressdrops.unif.12pm6.txt'
+  ifilename_dtau = './ifiles/stressdrops.unif.12pm6.in'
+  ifilename_crp = './ifiles/creepcoef.bz1996.in'
   ofilename2 ='./iofiles/lastdb2.unif.t150.dtau12pm6'
 
   !  Define ff(i-k,j,l) by tau(i,j)=[Sum over k,l]ff(i-k,j,l)*slip(k,l);
@@ -47,26 +48,26 @@ program faultslip
   taus = faulttaus( nl, nd, Zdepth/nd, dtaumx, fs, dSigmaEff_dz)
 
   ! Set the creep coefficients
-  SeffDB = dSigmaEff_dz*zDB
-  crp = faultcrp( nl, nd, Xlength/nl, Zdepth/nd, Vpl, fs, SeffDB, tauratioz, zDB, xDB)
-
-  ! Add randomness to the creep coefficientds
-  zcrpDB = Vpl/((fs*SeffDB)**3)
-  zrcrp = 3.0*log(tauratioz)/(Zdepth - zDB)
-  call add_randomness( crp, nl, nd, Xlength/nl, Zdepth/nd, xDB, zDB, zcrpDB, zrcrp  )
+  crp = read_faultvalues( ifilename_crp, nl, nd )
 
   ! Set the activation energy
   activEnergy = 0.0
   temperature = faulttemperature( nl, nd, (Zdepth/nd), Tsurface, dTdz )
-
-  ! Set the arrest stress based on the input file of static stress drops
-  taua = faulttaua( ifilename, nl, nd, taus )
 
   ! Set the dynamic stress
   taud = taus - ( taus - taua )/dos
 
   ! Initial stress in bars
   tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
+
+  ! ! TMP debugging
+  ! open( 10, file='tmp.out')
+  ! do i=1,nl
+  !    do j=1,nd
+  !       write( 10, *) crp(i,j)
+  !    end do
+  ! end do
+  ! stop
 
   ! Lock the fault; initialize fault offset from plate motion u1, u2
   tauf = taus
@@ -142,14 +143,6 @@ program faultslip
 
   stop
 
-    !  ! TMP debugging
-    !  open( 10, file='tmp2.out')
-    !  do i=1,nl
-    !     do j=1,nd
-    !        write( 10, *) tau(i,j)
-    !     end do
-    !  end do
-    ! stop
 
 end program faultslip
 

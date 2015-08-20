@@ -1,5 +1,5 @@
 
-SDIR = ../../src/
+SDIR = ../../src/cpp/
 IDIR = $(SDIR)
 CXX = g++
 OPT = -g
@@ -20,4 +20,3 @@ clear: clean
 
 clean:
 	rm -f $(SDIR)*.o *~
-

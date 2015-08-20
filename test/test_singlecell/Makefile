@@ -1,5 +1,5 @@
 
-SDIR = ../../src/
+SDIR = ../../src/cpp/
 IDIR = $(SDIR)
 CXX = g++
 OPT = -g

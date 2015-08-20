@@ -1,0 +1,4 @@
+src/fortran/originals/*
+src/fortran/unused/*
+*.o
+*.mod

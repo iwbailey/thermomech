@@ -13,7 +13,7 @@ program faultslip
   ! in that here some (e.g. 20%) randomly chosen cells are giver creep
   ! propoerties of depth z = (or >) zDB.
   !
-  real(kind=8), parameter :: dt = 4.0/356.0 ! time increment (yr)
+  real(kind=8), parameter :: DT0 = 4.0/356.0 ! time increment (yr)
 
   ! Initial time
   real(kind=8), parameter :: t0 = 125.0
@@ -25,12 +25,14 @@ program faultslip
 
   integer i, j, it, ihypo, jhypo, nhypo, nEQ
 
-  character(200) ofilename2, ifilename_dtau, ifilename_crp
+  character(200) ofilename2, ifilename_dtau, ifilename_crp, ifilename_activ
 
-  real(kind=8) upl, t
+  real(kind=8) upl, t, dt
 
   ifilename_dtau = './ifiles/stressdrops.unif.12pm6.in'
-  ifilename_crp = './ifiles/creepcoef.bz1996.in'
+  ifilename_crp = './ifiles/creepcoef.arrh.in'
+  !ifilename_crp = './ifiles/creepcoef.bz1996.in'
+  ifilename_activ = './ifiles/activEnergy.arrh.in'
   ofilename2 ='./iofiles/lastdb2.unif.t150.dtau12pm6'
 
   !  Define ff(i-k,j,l) by tau(i,j)=[Sum over k,l]ff(i-k,j,l)*slip(k,l);
@@ -51,23 +53,19 @@ program faultslip
   crp = read_faultvalues( ifilename_crp, nl, nd )
 
   ! Set the activation energy
-  activEnergy = 0.0
+  !activEnergy = 0.0
+  activEnergy = read_faultvalues( ifilename_activ, nl, nd )
+
+  ! Set background temperature
   temperature = faulttemperature( nl, nd, (Zdepth/nd), Tsurface, dTdz )
 
   ! Set the dynamic stress
   taud = taus - ( taus - taua )/dos
 
   ! Initial stress in bars
-  tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
+  tau0 = min( taus - 0.5*dtaumx, &
+       0.99*( (Vpl/crp)*exp( activEnergy/(Rg*temperature) ) )**(1.0/3.0))
 
-  ! ! TMP debugging
-  ! open( 10, file='tmp.out')
-  ! do i=1,nl
-  !    do j=1,nd
-  !       write( 10, *) crp(i,j)
-  !    end do
-  ! end do
-  ! stop
 
   ! Lock the fault; initialize fault offset from plate motion u1, u2
   tauf = taus
@@ -90,8 +88,20 @@ program faultslip
      call slipdef2stress( tau, tau0, u1-upl, fi, nl, nd )
      tau = tau + ( fes + fen )*(-vpl*t)
 
-    ! Check for negative stress
-     if( minval(tau).lt.0 ) write(*,*)'negative stress at i,j=',i,j
+     ! Check for negative stress
+     if( minval(tau).lt.0 ) then
+        write(*,*)'negative stress at i,j=',i,j
+        ! TMP debugging
+        open( 10, file='tmp.out')
+        do i=1,nl
+           do j=1,nd
+              write( 10, *) tau(i,j)
+           end do
+        end do
+        stop
+
+        stop
+     end if
 
      ! Find location of hypocenter
      call find_hypocenters( nhypo, ihypo, jhypo, tau, taus, nl, nd )
@@ -106,11 +116,22 @@ program faultslip
         call calc_failures( tau, u2, nl, nd, fi, taus, taud, taua )
      end if
 
+    ! ! TMP debugging
+    !  open( 10, file='tmp.out')
+    !  do i=1,nl
+    !     do j=1,nd
+    !        write( 10, *) u2(i,j)
+    !     end do
+    !  end do
+    !  stop
+
+
      ! Calc vcrp(i,j) for next time step
-     vcrp = crp*(tau**3)*exp( activEnergy / (Rg*temperature) )
+     vcrp = crp*(tau**3)*exp( -activEnergy / (Rg*temperature) )
 
      ! Update fault motion to account for last brittle slip and next
      ! creep motion
+     dt = DT0
      u1 = u2 + vcrp*dt
 
      ! Check and correct for overshoot
@@ -119,11 +140,13 @@ program faultslip
            do j = 1,nd
               if( u1(i,j) - upl .gt. 0.0 )then
                  write(*,*)'overshoot at i,j=',i,j
-                 u1(i,j)=upl-1
+                 u1(i,j) = upl-1
               end if
            end do
         end do
      endif
+
+
 
      ! Update time and plate motion over next time step;
      u2 = u1

@@ -25,7 +25,7 @@ program faultslip
 
   integer i, j, it, ihypo, jhypo, nhypo, nhypo1, nSlip
 
-  character(200) ifilename, ofilename, ifile_dtau, ifile_crp
+  character(200) ifilename, ofilename, ifile_dtau, ifile_crp, ifile_activ
   real(kind=8) dt, t1
 
   real(kind=8) upl, taumx, taumn, t, avgSlip, avgStressDrop
@@ -35,7 +35,9 @@ program faultslip
   ifilename='./iofiles/lastdb2.unif.t150.dtau12pm6'
   ofilename='./iofiles/slipdb2_test.unif.dtau12pm6'
   ifile_dtau  = './ifiles/stressdrops.unif.12pm6.in'
-  ifile_crp = './ifiles/creepcoef.bz1996.in'
+  ifile_crp = './ifiles/creepcoef.arrh.in'
+  !ifile_crp = './ifiles/creepcoef.bz1996.in'
+  ifile_activ = './ifiles/activEnergy.arrh.in'
 
   !	write(*,*) 'dtmx=',dtmx
   dt = dtmx              ! initial time step
@@ -55,7 +57,8 @@ program faultslip
   crp = read_faultvalues( ifile_crp, nl, nd )
 
   ! Set the activation energy
-  activEnergy = 0.0
+  activEnergy = read_faultvalues( ifile_activ, nl, nd )
+  !activEnergy = 0.0
   temperature = faulttemperature( nl, nd, (Zdepth/nd), Tsurface, dTdz )
 
   ! Set the static strength
@@ -69,7 +72,10 @@ program faultslip
   taud = taus - ( taus - taua )/dos
 
   ! Initial stress in bars
-  tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
+!  tau0 = min( taus - 0.5*dtaumx, 0.95*( Vpl/crp )**(1.0/3.0))
+  ! Initial stress in bars
+  tau0 = min( taus - 0.5*dtaumx, &
+       0.99*( (Vpl/crp)*exp( activEnergy/(Rg*temperature) ) )**(1.0/3.0))
 
   ! Read the slip deficit from the output of the initialization program
   open(1,file=ifilename,form='unformatted')
@@ -129,7 +135,7 @@ program faultslip
 
      ! Check for negative stress
      if( minval(tau).lt.0.0 )then
-        write(*,*) 'error: negative stress at i,j=',i,j
+        write(*,*) 'error: negative stress, ', minval(tau)
         stop -4
      endif
 
@@ -178,7 +184,7 @@ program faultslip
      endif ! Continue from here if there are no failure points
 
      ! Calc vcrp(i,j) for next time step from current stresses
-     vcrp = crp*(tau**3)*exp( activEnergy / (Rg*temperature) )
+     vcrp = crp*(tau**3)*exp( -activEnergy / (Rg*temperature) )
 
      ! Calculate the time step
      dt = dtmx

@@ -2,3 +2,4 @@ src/fortran/originals/*
 src/fortran/unused/*
 *.o
 *.mod
+src/cpp/romberg_integration.*

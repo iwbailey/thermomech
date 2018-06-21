@@ -5,6 +5,8 @@
 # Note, check the number of time steps in the input_parametes.h file before
 # running this
 
+set -e
+
 #---------------------------------------------------------------------
 # Same execution used for both programs
 function run_prog ()
@@ -15,7 +17,7 @@ function run_prog ()
     make $prog
 
     echo "Running program..."
-    ${prog} > ${prog}_eqcat.out
+    ./${prog} > ${prog}_eqcat.out
 
     echo "Plotting..."
     gnuplot <<EOF

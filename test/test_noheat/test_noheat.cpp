@@ -1,15 +1,15 @@
 /**
- * test_bz1996.cpp ---
+ * test_noheat.cpp ---
  *
  *  Test a fault set up that is analogous to the BZ 1996 model,
  *  i.e. stress-dependent, but no temperature dependent creep.  Note it is not
  *  exactly the same because the creep is set up in a different way
  *
  *
- * Filename: test_bz1996.cpp
+ * Filename: test_noheat.cpp
  * Description:
  * Author: Iain W. Bailey
- * Created: Sun Apr  6 14:15:22 2014 (-0400)
+ * Created: Apr 2014
  * Version: 1
  * Last-Updated: Sun Aug 24 15:46:41 2014 (-0400)
  *           By: Iain W. Bailey

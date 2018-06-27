@@ -52,7 +52,8 @@ namespace In
   const double maxTimeStep = 1.0*Units::day;
   const double minTimeStep = 1.0*Units::minute;
   const int nTimeMax = 1e6; // maximum number of time steps
-  const double maxTime = 100.0*Units::year;
+  //const double maxTime = 100.0*Units::year;
+  const double maxTime = 2.0*Units::year;
 
   /* Output file names */
   const std::string ofilesuffix_initStress = "_initstress.txt";

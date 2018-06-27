@@ -30,7 +30,14 @@ plot '${prog}_eqcat.out' u 1:5 w points
 EOF
 
     echo "Displaying"
-    eog ${prog}_timemag.png
+    if [ -x /usr/bin/eog ]; then
+        eog ${prog}_timemag.png
+    elif [ -x /usr/bin/ristretto ]; then
+        ristretto ${prog}_timemag.png
+    else
+        echo Output check plot written to $prog.png
+    fi
+
 }
 #---------------------------------------------------------------------
 

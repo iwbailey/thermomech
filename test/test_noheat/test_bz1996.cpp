@@ -75,7 +75,10 @@ int main(int argc, char * argv[])
                    In::xBD, In::xBD,
                    In::loadingStrainRate, StatStrength( In::xBD ) );
 
-  /* Set up the creep parameters over entire fault including creep mask*/
+  /* Set up the creep parameters over entire fault including creep mask. By
+   * setting E to zero, we are ignoring the Arrhenius part and using the A
+   * value that we have forced to be like the BZ1996 Creep mask.
+   */
   std::vector<double> faultE(nCells, 0.0);
   std::vector<double> faultn(nCells, 3.0 );
 
@@ -90,10 +93,11 @@ int main(int argc, char * argv[])
 	  taus[iCell] = StatStrength(depth);
 	  taud[iCell] = taus[iCell] - strengthDrops[iCell];
 
-          /* Calculate the creep strength and the strength envelope */
-          CreepLaw C0( faultA[iCell], 0.0, 3.0 );
+          /* Calculate the creep strength and the strength envelope.  */
+          CreepLaw C( faultA[iCell], faultE[i], faultn[i] );
+          bkgdT[iCell] = T(depth);
 	  initStress[iCell] = std::min( StatStrength(depth),
-                                        C0.stress( In::loadingStrainRate, bkgdT[iCell] ));
+                                        C.stress( In::loadingStrainRate, bkgdT[iCell] ));
 	}
     }
 

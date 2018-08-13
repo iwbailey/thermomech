@@ -9,10 +9,9 @@ echo "Compiling..."
 make $prog
 
 echo "Running program..."
-${prog} > ${prog}.out
+./${prog} > ${prog}.out
 
 echo "Plotting..."
 gnuplot < plot_${prog}.gp
 
-echo "Displaying"
-eog ${prog}.png
+echo Output check plot written to $prog.png

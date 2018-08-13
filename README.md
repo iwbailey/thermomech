@@ -45,6 +45,7 @@ any heat from the slip.
 
 
 ## test_singlecell
+This test runs the full algorithm including creep for a single cell.
 
 ## test_imposed_eqk
 

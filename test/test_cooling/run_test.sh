@@ -9,7 +9,7 @@ echo "Compiling..."
 make $prog
 
 echo "Running program..."
-${prog}
+./${prog}
 
 #------------------------------
 prog=test_cooling
@@ -17,11 +17,10 @@ prog=test_cooling
 echo "Compiling..."
 make $prog
 
-echo "Running program..."
-${prog} > ${prog}.out
+echo -e "\n\nRunning program..."
+./${prog} > ${prog}.out
 
 echo "Plotting..."
 gnuplot < plot_${prog}.gp
 
-echo "Displaying"
-eog ${prog}.png
+echo "Written output to" ${prog}.png

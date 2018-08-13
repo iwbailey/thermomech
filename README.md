@@ -17,8 +17,8 @@ for yourself.
 
 # Tests
 Each test in its own subfolder. To change parameters of the test, change the
-.cpp file(s), then make. To run the test and generate check plots. There is a
-bash script called run_test.sh in each folder.
+.cpp file(s) or the "input\_parameters.h", then make. To run the test and
+generate check plots. There is a bash script called run_test.sh in each folder.
 
 ## test_stiffness
 This makes sure the stiffness (stress transfer) matrix is being calculated correctly
@@ -43,10 +43,14 @@ this code.
 The algorithm uses the temperature based slip velocity, but does not generate
 any heat from the slip.
 
+## test_cooling
+This test calculates the cooling after imposing slip
 
 ## test_singlecell
-This test runs the full algorithm including creep for a single cell.
+This test runs the full algorithm including heat-based creep for a single cell.
 
-## test_imposed_eqk
+## test\_imposed_eqk
 
-## test_cooling
+### test_circlerupt
+This test imposes a circular rupture on the fault and lets the algorithm play
+out for a short amount of time
